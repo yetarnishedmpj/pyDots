@@ -3,12 +3,36 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyDOT"
+name = "pyDots"
 version = "0.1.0"
 description = "Visual Python Scripting Language"
+readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+license = {text = "MIT"}
+authors = [
+    {name = "yetarnishedmpj"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Software Development :: User Interfaces",
+]
+dependencies = [
+    "PyQt6>=6.0.0",
+]
 
 [project.optional-dependencies]
 dev = ["pytest"]
-gui = ["PyQt6"]
+
+[project.scripts]
+pydots = "pydots.main:run_editor"
+
+[project.urls]
+"Homepage" = "https://github.com/yetarnishedmpj/pyDots"
+"Bug Tracker" = "https://github.com/yetarnishedmpj/pyDots/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pydots*"]

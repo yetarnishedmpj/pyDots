@@ -1,4 +1,4 @@
-# pyDOT - Visual Python Scripting Language
+# pyDots - Visual Python Scripting Language
 
 pyDOT is a powerful, cross-platform visual node-based editor that translates graphical logic into executable Python code in real-time. Designed for both beginners learning logic and experts prototyping complex scripts, pyDOT offers a seamless transition between visual flow and professional code.
 
@@ -17,33 +17,40 @@ pyDOT is a powerful, cross-platform visual node-based editor that translates gra
 
 ## 🛠️ Installation
 
-### Prerequisites
-- Python 3.10 or higher
-- PyQt6
-
 ### Setup
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/pyDOT.git
-   cd pyDOT
+   git clone https://github.com/yetarnishedmpj/pyDots.git
+   cd pyDots
    ```
-2. Install dependencies:
+2. Install the package in editable mode:
    ```bash
-   pip install PyQt6
+   pip install -e .
    ```
 
 ## 📖 How to Use
 
-1. **Run the Editor**:
-   ```bash
-   python -m src.main
-   ```
-2. **Build your Graph**:
-   - Drag nodes from the **Node Palette** on the left.
-   - Connect **Orange Ports** to define the order of execution (**FLOW**).
-   - Connect **Colored Ports** to pass data between operations.
-3. **Configure Nodes**: Click a node to edit its name or value in the **Node Properties** panel on the top-right.
-4. **Execute**: Click the green **RUN** button to see your script in action!
+### As an Application
+After installation, you can launch the editor from anywhere by simply typing:
+```bash
+pydots
+```
+
+### As a Library
+You can use pyDots in your own Python projects:
+```python
+import pydots
+
+# Parse code into a graph
+graph = pydots.parse("x = 5 + 10")
+
+# Generate code back from graph
+code = pydots.generate(graph)
+print(code) # x = (5 + 10)
+
+# Execute the graph logic
+pydots.execute(graph)
+```
 
 ## 🏗️ Architecture
 
