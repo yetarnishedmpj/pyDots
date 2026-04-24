@@ -387,28 +387,28 @@ NODE_DEFINITIONS: dict[str, dict] = {
         "label": "a + b",
         "category": "Math",
         "color": "#36d",
-        "inputs": [{"name": "a", "type": PortType.FLOAT}, {"name": "b", "type": PortType.FLOAT}],
-        "outputs": [{"name": "result", "type": PortType.FLOAT}]
+        "inputs": [{"name": "a", "type": PortType.ANY}, {"name": "b", "type": PortType.ANY}],
+        "outputs": [{"name": "result", "type": PortType.ANY}]
     },
     "math_subtract": {
         "label": "a - b",
         "category": "Math",
         "color": "#36d",
-        "inputs": [{"name": "a", "type": PortType.FLOAT}, {"name": "b", "type": PortType.FLOAT}],
-        "outputs": [{"name": "result", "type": PortType.FLOAT}]
+        "inputs": [{"name": "a", "type": PortType.ANY}, {"name": "b", "type": PortType.ANY}],
+        "outputs": [{"name": "result", "type": PortType.ANY}]
     },
     "math_multiply": {
         "label": "a * b",
         "category": "Math",
         "color": "#36d",
-        "inputs": [{"name": "a", "type": PortType.FLOAT}, {"name": "b", "type": PortType.FLOAT}],
-        "outputs": [{"name": "result", "type": PortType.FLOAT}]
+        "inputs": [{"name": "a", "type": PortType.ANY}, {"name": "b", "type": PortType.ANY}],
+        "outputs": [{"name": "result", "type": PortType.ANY}]
     },
     "math_divide": {
         "label": "a / b",
         "category": "Math",
         "color": "#36d",
-        "inputs": [{"name": "a", "type": PortType.FLOAT}, {"name": "b", "type": PortType.FLOAT}],
+        "inputs": [{"name": "a", "type": PortType.ANY}, {"name": "b", "type": PortType.ANY}],
         "outputs": [{"name": "result", "type": PortType.FLOAT}]
     },
     "math_mod": {
@@ -579,7 +579,11 @@ NODE_DEFINITIONS: dict[str, dict] = {
             {"name": "exec_in", "type": PortType.FLOW},
             {"name": "condition", "type": PortType.BOOL}
         ],
-        "outputs": [{"name": "then", "type": PortType.FLOW}, {"name": "else", "type": PortType.FLOW}]
+        "outputs": [
+            {"name": "then", "type": PortType.FLOW},
+            {"name": "else", "type": PortType.FLOW},
+            {"name": "exec_out", "type": PortType.FLOW}
+        ]
     },
     "elif": {
         "label": "Elif",
@@ -607,7 +611,11 @@ NODE_DEFINITIONS: dict[str, dict] = {
             {"name": "iterable", "type": PortType.LIST},
             {"name": "loop_var", "type": PortType.STR, "default": "_"}
         ],
-        "outputs": [{"name": "body", "type": PortType.FLOW}, {"name": "done", "type": PortType.FLOW}]
+        "outputs": [
+            {"name": "body", "type": PortType.FLOW},
+            {"name": "done", "type": PortType.FLOW},
+            {"name": "exec_out", "type": PortType.FLOW}
+        ]
     },
     "while": {
         "label": "While Loop",
@@ -617,7 +625,11 @@ NODE_DEFINITIONS: dict[str, dict] = {
             {"name": "exec_in", "type": PortType.FLOW},
             {"name": "condition", "type": PortType.BOOL}
         ],
-        "outputs": [{"name": "body", "type": PortType.FLOW}, {"name": "done", "type": PortType.FLOW}]
+        "outputs": [
+            {"name": "body", "type": PortType.FLOW},
+            {"name": "done", "type": PortType.FLOW},
+            {"name": "exec_out", "type": PortType.FLOW}
+        ]
     },
     "break": {
         "label": "Break",
@@ -858,6 +870,58 @@ NODE_DEFINITIONS: dict[str, dict] = {
             {"name": "target", "type": PortType.ANY}
         ],
         "outputs": [{"name": "exec_out", "type": PortType.FLOW}]
+    },
+    "attribute_set": {
+        "label": "Set Attribute",
+        "category": "Operations",
+        "color": "#66a",
+        "inputs": [
+            {"name": "exec_in", "type": PortType.FLOW},
+            {"name": "obj", "type": PortType.OBJECT},
+            {"name": "value", "type": PortType.ANY}
+        ],
+        "outputs": [{"name": "exec_out", "type": PortType.FLOW}]
+    },
+    "subscript_set": {
+        "label": "Set Item",
+        "category": "Operations",
+        "color": "#66a",
+        "inputs": [
+            {"name": "exec_in", "type": PortType.FLOW},
+            {"name": "obj", "type": PortType.ANY},
+            {"name": "index", "type": PortType.ANY},
+            {"name": "value", "type": PortType.ANY}
+        ],
+        "outputs": [{"name": "exec_out", "type": PortType.FLOW}]
+    },
+    "if_exp": {
+        "label": "Condition (Inline)",
+        "category": "Control",
+        "color": "#a3a",
+        "inputs": [
+            {"name": "condition", "type": PortType.BOOL},
+            {"name": "true_value", "type": PortType.ANY},
+            {"name": "false_value", "type": PortType.ANY}
+        ],
+        "outputs": [{"name": "result", "type": PortType.ANY}]
+    },
+    "dict_comp": {
+        "label": "Dict Comp",
+        "category": "Comprehensions",
+        "color": "#5a5",
+        "inputs": [
+            {"name": "key", "type": PortType.ANY},
+            {"name": "value", "type": PortType.ANY},
+            {"name": "iterable", "type": PortType.LIST}
+        ],
+        "outputs": [{"name": "result", "type": PortType.DICT}]
+    },
+    "fstring": {
+        "label": "f-string",
+        "category": "Operations",
+        "color": "#a74",
+        "inputs": [],
+        "outputs": [{"name": "result", "type": PortType.STR}]
     },
 }
 

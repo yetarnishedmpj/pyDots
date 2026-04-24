@@ -74,9 +74,10 @@ class CodeGenerator:
 
         code = self._generate_node(node, indent)
 
-        # If it's a statement, add to output and follow exec_out
-        if code and isinstance(code, str) and self._is_statement(node):
-            self._output.append(code)
+        # If it's a statement, follow exec_out
+        if self._is_statement(node):
+            if code and isinstance(code, str):
+                self._output.append(code)
             
             # Follow simple sequence flow
             next_node = self._get_output_connection(node, "exec_out")
@@ -91,7 +92,7 @@ class CodeGenerator:
             "variable_set", "print", "if", "elif", "else", "for", "while",
             "break", "continue", "return", "function_define", "class_define",
             "import", "import_from", "try", "except", "raise", "with", "pass", "delete",
-            "function_call"  # Function calls used as statements
+            "function_call", "attribute_set", "subscript_set"
         }
         return node.node_type in statement_types
 
@@ -251,9 +252,35 @@ class CodeGenerator:
         elif node_type == "if_exp":
             return self._gen_if_exp(node)
 
+        elif node_type == "fstring":
+            parts = node.data.get("parts", [])
+            content = ""
+            for part in parts:
+                if part["type"] == "literal":
+                    content += str(part["value"])
+                elif part["type"] == "expr":
+                    val = self._get_input_value(node, f"part{part['index']}") or "?"
+                    # Strip quotes if it's a literal string being inserted? No, f-string handles it.
+                    # Wait, if it's an expression, we want {expr}
+                    content += "{" + val + "}"
+            return f'f"{content}"'
+
         # Special
         elif node_type == "delete":
-            return self._indent_str(indent) + "del ?"
+            target = self._get_input_value(node, "target") or "?"
+            return self._indent_str(indent) + f"del {target}"
+
+        elif node_type == "attribute_set":
+            obj = self._get_input_value(node, "obj") or "?"
+            attr = node.data.get("attr", "?")
+            val = self._get_input_value(node, "value") or "None"
+            return self._indent_str(indent) + f"{obj}.{attr} = {val}"
+
+        elif node_type == "subscript_set":
+            obj = self._get_input_value(node, "obj") or "?"
+            idx = self._get_input_value(node, "index") or "?"
+            val = self._get_input_value(node, "value") or "None"
+            return self._indent_str(indent) + f"{obj}[{idx}] = {val}"
 
         return None
 

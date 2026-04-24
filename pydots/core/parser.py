@@ -103,28 +103,76 @@ class ASTParser:
     def _parse_expr_stmt(self, stmt: ast.Expr) -> Node | None:
         return self._parse_expression(stmt.value)
 
-    def _parse_assign(self, stmt: ast.Assign) -> Node:
+    def _parse_assign(self, stmt: ast.Assign) -> Node | None:
         """Parse: target = value"""
-        target_name = self._get_target_name(stmt.targets[0])
+        if not stmt.targets:
+            return None
+        
+        target = stmt.targets[0]
+        val_node = self._parse_expression(stmt.value)
+        if val_node:
+            self.graph.add_node(val_node)
 
-        # Create variable set node
-        node = create_node("variable_set", 0, 0)
-        if not node:
-            node = Node("variable_set", "Set Variable")
-            node.add_input("value", PortType.ANY)
-            node.add_output("result", PortType.ANY)
-        node.data["name"] = target_name
-        self.graph.add_node(node)
-
-        # Parse value
-        if stmt.value:
-            val_node = self._parse_expression(stmt.value)
+        if isinstance(target, ast.Name):
+            node = create_node("variable_set", 0, 0)
+            if not node:
+                node = Node("variable_set", f"Set {target.id}")
+                node.add_input("exec_in", PortType.FLOW)
+                node.add_input("value", PortType.ANY)
+                node.add_output("exec_out", PortType.FLOW)
+                node.add_output("result", PortType.ANY)
+            node.data["name"] = target.id
+            self.graph.add_node(node)
             if val_node:
-                self.graph.add_node(val_node)
-                # Connect to value input
                 self._connect_nodes(val_node, node, "value", "value")
+            return node
 
-        return node
+        elif isinstance(target, ast.Attribute):
+            node = create_node("attribute_set", 0, 0)
+            if not node:
+                node = Node("attribute_set", f"Set .{target.attr}")
+                node.add_input("exec_in", PortType.FLOW)
+                node.add_input("obj", PortType.OBJECT)
+                node.add_input("value", PortType.ANY)
+                node.add_output("exec_out", PortType.FLOW)
+            node.data["attr"] = target.attr
+            self.graph.add_node(node)
+            
+            obj_node = self._parse_expression(target.value)
+            if obj_node:
+                self.graph.add_node(obj_node)
+                self._connect_nodes(obj_node, node, "value", "obj")
+            
+            if val_node:
+                self._connect_nodes(val_node, node, "value", "value")
+            return node
+
+        elif isinstance(target, ast.Subscript):
+            node = create_node("subscript_set", 0, 0)
+            if not node:
+                node = Node("subscript_set", "Set Item")
+                node.add_input("exec_in", PortType.FLOW)
+                node.add_input("obj", PortType.ANY)
+                node.add_input("index", PortType.ANY)
+                node.add_input("value", PortType.ANY)
+                node.add_output("exec_out", PortType.FLOW)
+            self.graph.add_node(node)
+            
+            obj_node = self._parse_expression(target.value)
+            if obj_node:
+                self.graph.add_node(obj_node)
+                self._connect_nodes(obj_node, node, "value", "obj")
+            
+            idx_node = self._parse_expression(target.slice) if hasattr(target, 'slice') else None
+            if idx_node:
+                self.graph.add_node(idx_node)
+                self._connect_nodes(idx_node, node, "value", "index")
+            
+            if val_node:
+                self._connect_nodes(val_node, node, "value", "value")
+            return node
+
+        return None
 
     def _parse_aug_assign(self, stmt: ast.AugAssign) -> Node:
         """Parse: target op= value (e.g., x += 1)"""
@@ -455,15 +503,51 @@ class ASTParser:
         return node
 
     def _connect_nodes(self, source: Node, target: Node, source_port: str, target_port: str):
-        """Helper to connect two nodes."""
-        # Find the output port
-        output_port = source_port
-        if source_port not in [p.name for p in source.outputs]:
-            output_port = source.outputs[0].name if source.outputs else "value"
+        """Helper to connect two nodes, automatically finding compatible ports if needed."""
+        # 1. Try to find the exact target port
+        target_p = target.get_input(target_port)
+        if not target_p and target.inputs:
+            # Fallback: if it's a flow connection, look for exec_in
+            if "exec" in target_port:
+                for p in target.inputs:
+                    if p.port_type == PortType.FLOW:
+                        target_p = p
+                        target_port = p.name
+                        break
+            # Otherwise just pick the first compatible or first port
+            if not target_p:
+                target_p = target.inputs[0]
+                target_port = target_p.name
 
-        # Find the input port
-        input_port = target_port
-        self._add_edge(source.id, output_port, target.id, input_port)
+        # 2. Try to find the best source port
+        actual_source_port = source_port
+        
+        # Check if requested source port exists and is compatible
+        source_p = source.get_output(source_port)
+        if not source_p or (target_p and not source_p.matches(target_p)):
+            # Find a compatible port
+            found = False
+            if target_p:
+                for p in source.outputs:
+                    if p.matches(target_p):
+                        actual_source_port = p.name
+                        found = True
+                        break
+            
+            if not found and source.outputs:
+                # Fallback: prefer non-flow for data, flow for flow
+                is_flow_target = target_p and target_p.port_type == PortType.FLOW
+                for p in source.outputs:
+                    is_flow_source = p.port_type == PortType.FLOW
+                    if is_flow_source == is_flow_target:
+                        actual_source_port = p.name
+                        found = True
+                        break
+                
+                if not found:
+                    actual_source_port = source.outputs[0].name
+
+        self._add_edge(source.id, actual_source_port, target.id, target_port)
 
     # ========== EXPRESSIONS ==========
 
@@ -1003,21 +1087,26 @@ class ASTParser:
         return node
 
     def _parse_fstring(self, expr: ast.JoinedStr) -> Node:
-        node = Node("fstring", "f-string")
-        node.add_output("value", PortType.STR)
+        node = create_node("fstring", 0, 0)
+        if not node:
+            node = Node("fstring", "f-string")
+            node.add_output("result", PortType.STR)
         self.graph.add_node(node)
 
-        for value in expr.values:
-            if isinstance(value, ast.FormattedValue):
-                inp = f"input{len([i for i in node.inputs if i.name.startswith('input')])}"
-                node.add_input(inp, PortType.ANY)
-                val_node = self._parse_formatted_value(value)
+        parts = []
+        for i, value in enumerate(expr.values):
+            if isinstance(value, ast.Constant):
+                parts.append({"type": "literal", "value": value.value})
+            elif isinstance(value, ast.FormattedValue):
+                parts.append({"type": "expr", "index": i})
+                inp_name = f"part{i}"
+                node.add_input(inp_name, PortType.ANY)
+                val_node = self._parse_expression(value.value)
                 if val_node:
                     self.graph.add_node(val_node)
-                    self._connect_nodes(val_node, node, "value", inp)
-            else:
-                pass  # Handle literal string parts
-
+                    self._connect_nodes(val_node, node, "value", inp_name)
+        
+        node.data["parts"] = parts
         return node
 
     def _parse_formatted_value(self, expr: ast.FormattedValue) -> Node:
